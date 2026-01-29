@@ -1,0 +1,37 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  border: px solid rgb(178, 146, 106);
+  background-color: rgb(255, 245, 216);
+
+  font: bold 20px Arial, sans-serif;
+
+}
+canvas {
+  display: block;;
+  
+}
+
+h1 {
+  color: rgb(0, 0, 0);
+
+}
+
+a:hover {
+  color: red;
+}
+
+img{ /* centers image */
+  display: block; 
+  margin-left: auto;
+  margin-right: auto;
+}
+
+main {
+  /* background-color : rgba(208, 171, 171, 0.4); */
+  text-align: center;
+}
+
+background {
+  position: 100px 100px;
+}
