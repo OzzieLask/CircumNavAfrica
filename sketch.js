@@ -49,6 +49,13 @@ function svgToScreen(sx, sy) {
     };
 }
 
+// Compatibility stubs for missing grid code (prevents runtime errors if those modules/files aren't present)
+let circles = [];
+let cols = 6;
+let rows = 6;
+function initializeColors() { /* no-op stub - replace with real implementation if you have it */ }
+function createGrid() { /* no-op stub - replace with real implementation if you have it */ }
+
 // Easy config for click element position
 const CLICK_ELEMENT_CONFIG = {
     xOffset: 0, // 0 = center horizontally
@@ -57,7 +64,11 @@ const CLICK_ELEMENT_CONFIG = {
 
 function preload() {
     // attempt to load the SVG map (place map.svg in project root)
-    bgImg = loadImage('map.svg');
+    // use callbacks so failure won't throw and we can log a helpful message
+    loadImage('map.svg',
+        img => { bgImg = img; },
+        err => { console.warn('map.svg failed to load — check path and casing or hosting.'); }
+    );
 }
 
 function setup() {
