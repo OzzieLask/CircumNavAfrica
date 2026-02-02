@@ -1,42 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
-    
-    
-    
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <meta charset="utf-8" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To India</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
 
-  </head>
-  <title> Africa </title>
+    <img id="bg-map" src="map.svg" alt="Map background">
 
-
-  <body> <!-- everything you want to see needs to be in body -->
-
-    
-    <main>
-      <h1>Circumnavigating Africa</h1>
-      <h2> and Reach India </h2>
-      <p> With the Portuguese</p>
-     <!-- <img src="Map.svg" alt="Map of Africa and India" width="400" height="400"> -->
-    </main>
-
-    <div>
-      <script src="sketch.js"></script> 
-      
+    <div class="TopText">
+        <h1>Get from Portugal to India</h1>
+        <h3></h3>
     </div>
 
-    <!-- Figma import -->
-     
+    <div class="container">
+        <div id="canvas-container"></div>
+    </div>
 
-  </body>
+    <div class="instructions">
+        Circumnavigate Africa to reach India!<br>
+    </div>
 
-
+    <script src="sketch.js"></script>
+</body>
 </html>
-
-<!-- <p>more <strong>and more </strong> typing lalalalalala</p> -->
-
-
-<!-- <img src="Images/timmy t.jpg" alt="Timothee Chalamet holding emmy or oscar" width="400" height="400">
