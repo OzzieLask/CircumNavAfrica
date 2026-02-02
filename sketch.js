@@ -65,9 +65,9 @@ const CLICK_ELEMENT_CONFIG = {
 function preload() {
     // attempt to load the SVG map (place map.svg in project root)
     // use callbacks so failure won't throw and we can log a helpful message
-    loadImage('map.svg',
+    loadImage('Map.svg',
         img => { bgImg = img; },
-        err => { console.warn('map.svg failed to load — check path and casing or hosting.'); }
+        err => { console.warn('Map.svg failed to load — check path and casing or hosting.'); }
     );
 }
 
