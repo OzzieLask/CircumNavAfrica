@@ -190,7 +190,7 @@ function setup() {
 
 function draw() {
     // Background
-    background(186, 180, 140);
+    background(176, 170, 150);
     
     // Draw map if loaded
     if (bgImg) {
@@ -305,6 +305,7 @@ function updateHoveredWaypoint() {
     }
 }
 
+
 // PATH DRAWS
 function drawJourneyPath() {
     // Ease the path drawing progress
@@ -314,7 +315,7 @@ function drawJourneyPath() {
     // Draw only the animated drawing line (no static path)
     stroke(160, 100, 60, 180);
     strokeWeight(5);
-    noFill();
+    noFill(); 
     
     beginShape();
     for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
@@ -348,7 +349,7 @@ function drawJourneyPath() {
         let p1 = svgToScreen(JOURNEY_WAYPOINTS[hoveredWaypoint].x, JOURNEY_WAYPOINTS[hoveredWaypoint].y);
         let p2 = svgToScreen(JOURNEY_WAYPOINTS[hoveredWaypoint + 1].x, JOURNEY_WAYPOINTS[hoveredWaypoint + 1].y);
         
-        stroke(200, 120, 60, 220 * pathSegmentAlpha);
+        stroke(200, 120, 60, 0 * pathSegmentAlpha);
         strokeWeight(8);
         line(p1.x, p1.y, p2.x, p2.y);
     }
@@ -384,14 +385,6 @@ function drawWaypoints() {
         ellipse(pos.x, pos.y, 55);
         pop();
         
-        // Number - fades based on unlock progress
-        if (currentOpacity > 0.1) {
-            fill(245, 235, 220, 255 * currentOpacity);
-            textAlign(CENTER, CENTER);
-            textSize(18);
-            textStyle(BOLD);
-            text(i + 1, pos.x, pos.y);
-        }
     }
 }
 
@@ -413,11 +406,11 @@ function drawExamIcon() {
     strokeWeight(2);
     ellipse(iconX, iconY, iconSize, iconSize);
     
-    // Lock/Clipboard icon
+    // exmam icon
     fill(240, 235, 225, examUnlocked ? 255 : 150);
     textAlign(CENTER, CENTER);
     textSize(24);
-    textStyle(BOLD);
+    textStyle(NORMAL);
     
     if (examUnlocked) {
         text("!", iconX, iconY); // Test unlocked
@@ -464,15 +457,12 @@ function drawCurrentInfoBox() {
     stroke(150, 110, 70, 150 * infoBoxAlpha);
     strokeWeight(2);
     rect(boxX, boxY, boxW, boxH, 12);
-    
-    // Decorative line
-    noStroke();
-    line(boxX + 20, boxY + 65, boxX + boxW - 20, boxY + 65);
+
     
     // Title
     fill(60, 40, 20, 240 * infoBoxAlpha);
     textSize(28);
-    textStyle(BOLD);
+    textStyle(NORMAL);
     textAlign(LEFT);
     text(wp.title, boxX + 30, boxY + 50);
     
@@ -518,6 +508,7 @@ function drawCurrentInfoBox() {
     pop();
 }
 
+// EXAM
 function drawExamModal() {
     if (!examModalOpen) return;
     
@@ -542,23 +533,20 @@ function drawExamModal() {
     let closeX = modalX + modalW - 40;
     let closeY = modalY + 30;
     
+    noStroke();
     fill(150, 110, 70, 200);
     textSize(32);
-    textStyle(BOLD);
+    textStyle(NORMAL);
     textAlign(CENTER, CENTER);
     text("✕", closeX, closeY);
     
     // Title
     fill(60, 40, 20, 255);
     textSize(44);
-    textStyle(BOLD);
+    textStyle(NORMAL);
     textAlign(LEFT);
     text("Journey Knowledge Exam", modalX + 50, modalY + 60);
     
-    // Decorative line
-    stroke(180, 140, 100, 150);
-    strokeWeight(2);
-    line(modalX + 40, modalY + 85, modalX + modalW - 40, modalY + 85);
     
     // Questions
     let questions = [
@@ -587,9 +575,10 @@ function drawExamModal() {
         let q = questions[i];
         
         // Question text
+        noStroke();
         fill(60, 40, 20, 255);
         textSize(18);
-        textStyle(BOLD);
+        textStyle(NORMAL);
         textAlign(LEFT);
         text(q.q, modalX + 50, qY);
         qY += 35;
@@ -620,8 +609,9 @@ function drawExamModal() {
                 }
             }
             
-            stroke(100, 70, 40, 200);
-            strokeWeight(2);
+            noStroke();
+            //stroke(100, 70, 40, 200);
+            //strokeWeight(2);
             rect(optX, optY, optW, btnH, 6);
             
             // Option text
