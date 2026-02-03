@@ -1,40 +1,94 @@
-// Hover/Click Reveals - Basic Interaction Demo
-// Left side: Hover elements to change color
-//push
+// Educational Journey: Vasco da Gama's Path to India
+// Cursor-based discovery - hover over the path to learn
 
-
-let hoverShapes = [];
-let clickElement;
-let dividerX;
 let bgImg = null;
-let showMap = false;
-let showHoverShapes = false; // Toggle visibility after click
-let clickElementClicked = false; // Track if click element has been clicked
-let easeInStartTime = null; // Track when ease-in animation starts
-let waveStartTime = null;
-let waveSourceIndex = null;
-let fadeOutStartTime = null;
+let hoveredWaypoint = -1;
+let infoBoxAlpha = 0;
+let pathSegmentAlpha = 0;
+let maxUnlockedWaypoint = 0; // Track progress through journey
+let waypointOpacities = []; // Store eased opacity for each waypoint
+let pathDrawProgress = 0; // Eased progress for drawing the path
+let examModalOpen = false; // Track if exam modal is displayed
+let examAnswers = [null, null, null]; // Store user answers: [q1, q2, q3]
+let examSubmitted = false; // Track if exam has been graded
+let lastInfoBoxBounds = null; // Store info box position to keep it visible when hovering over it
+let examUnlocked = false; // Track if exam icon should be unlocked (after viewing waypoint 6)
 
-// --- SVG anchor config (edit these SVG coords to move hover shapes) ---
-const SVG_W = 1440; // svg viewBox width or intrinsic width
-const SVG_H = 1024; // svg viewBox height or intrinsic height
+// SVG Configuration
+const SVG_W = 1440;
+const SVG_H = 1024;
 
-// Provide anchors in SVG coordinate space (x,y). Change these to reposition shapes.
-// size is optional and in pixels (SVG units) — will be scaled to canvas.
-const SVG_ANCHORS = [
-    { x: 479.786, y: 285.024, size: 60 },
-    { x: 982.000, y: 511.900, size: 60 },
-    { x: 927.131, y: 523.244, size: 60 },
-    { x: 539.174, y: 557.943, size: 58 },
-    { x: 424.917, y: 581.965, size: 80 },
-    { x: 642.457, y: 285.024, size: 66 }
+// Vasco da Gama's Journey Waypoints
+const JOURNEY_WAYPOINTS = [
+    {
+        id: 0,
+        name: "Lisbon, Portugal",
+        x: 479.786,
+        y: 220,
+        title: "The Beginning",
+        content: "In 1497, Vasco da Gama departed from Lisbon, Portugal with four ships and a crew of 170 men. His mission: to find a sea route to India.",
+        details: "This journey would take nearly 2 years and cover over 24,000 miles."
+    },
+    {
+        id: 1,
+        name: "Cape Verde Islands",
+        x: 264,
+        y: 457,
+        title: "Island Resupply",
+        content: "Da Gama's fleet stopped at the Cape Verde Islands off the African coast to resupply with fresh water, fruit, and provisions for the long ocean crossing ahead.",
+        details: "These Portuguese islands were a crucial waypoint for Atlantic voyages."
+    },
+    {
+        id: 2,
+        name: "West African Coast",
+        x: 323,
+        y: 565,
+        title: "Last Stop Before the Ocean",
+        content: "Before venturing into the deep Atlantic, the fleet made its final sighting of the African coast. This would be the last land they would see for months.",
+        details: "From here, they would take a bold southwestern route into open ocean."
+    },
+    {
+        id: 3,
+        name: "Deep Atlantic",
+        x: 450,
+        y: 720,
+        title: "The Bold Path",
+        content: "Unlike Bartolomeu Dias before him, da Gama ventured far into the open Atlantic, taking a daring southern route away from the African coast. This bold path would become the standard for future Indian Ocean voyages.",
+        details: "This maneuver avoided the dangerous African coast and proved more efficient than hugging the shore."
+    },
+    {
+        id: 4,
+        name: "Cape of Good Hope",
+        x: 728,
+        y: 972,
+        title: "Rounding the Cape",
+        content: "After months at sea, da Gama reached the Cape of Good Hope in South Africa. This was a critical navigation point where many ships had previously failed.",
+        details: "Strong currents and storms made this one of the most dangerous passages of the voyage."
+    },
+    {
+        id: 5,
+        name: "Mozambique & Mombasa",
+        x: 900,
+        y: 750,
+        title: "East African Ports",
+        content: "The fleet sailed up Africa's eastern coast, stopping at ports in Mozambique and Mombasa. Here they encountered established trading networks and Muslim merchants who had traded with India for centuries.",
+        details: "These cosmopolitan ports revealed that others had long known the route to the East."
+    },
+    {
+        id: 6,
+        name: "Calicut, India",
+        x: 1216,
+        y: 507,
+        title: "Arrival in India",
+        content: "In May 1498, da Gama reached Calicut on the Indian coast after crossing the Indian Ocean with monsoon winds. Europeans had finally found a sea route to Asia!",
+        details: "This voyage revolutionized global trade and marked the beginning of European influence in the Indian Ocean."
+    }
 ];
 
-// Map an (x,y) in SVG coordinates to canvas pixel coordinates, preserving aspect ratio.
+// Coordinate conversion functions
 function svgToScreen(sx, sy) {
     const scaleX = width / SVG_W;
     const scaleY = height / SVG_H;
-    // keep uniform scale to preserve aspect
     const scale = Math.min(scaleX, scaleY);
     const drawW = SVG_W * scale;
     const drawH = SVG_H * scale;
@@ -49,434 +103,684 @@ function svgToScreen(sx, sy) {
     };
 }
 
-// Compatibility stubs for missing grid code (prevents runtime errors if those modules/files aren't present)
-let circles = [];
-let cols = 6;
-let rows = 6;
-function initializeColors() { /* no-op stub - replace with real implementation if you have it */ }
-function createGrid() { /* no-op stub - replace with real implementation if you have it */ }
+function screenToSvg(px, py) {
+    const scaleX = width / SVG_W;
+    const scaleY = height / SVG_H;
+    const scale = Math.min(scaleX, scaleY);
+    const drawW = SVG_W * scale;
+    const drawH = SVG_H * scale;
+    const offsetX = (width - drawW) / 2;
+    const offsetY = (height - drawH) / 2;
+    return {
+        x: (px - offsetX) / scale,
+        y: (py - offsetY) / scale
+    };
+}
 
-// Easy config for click element position
-const CLICK_ELEMENT_CONFIG = {
-    xOffset: 0, // 0 = center horizontally
-    yOffset: 0.5  // 0.5 = center vertically
-};
+// Utility functions
+function distanceToLineSegment(px, py, x1, y1, x2, y2) {
+    let A = px - x1;
+    let B = py - y1;
+    let C = x2 - x1;
+    let D = y2 - y1;
 
+    let dot = A * C + B * D;
+    let lenSq = C * C + D * D;
+    let param = lenSq !== 0 ? dot / lenSq : 0;
+
+    let xx, yy;
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    let dx = px - xx;
+    let dy = py - yy;
+    return sqrt(dx * dx + dy * dy);
+}
+
+function wrapText(text, maxWidth, fontSize) {
+    let words = text.split(' ');
+    let lines = [];
+    let currentLine = '';
+    
+    textSize(fontSize);
+    
+    for (let word of words) {
+        let testLine = currentLine + (currentLine ? ' ' : '') + word;
+        let w = textWidth(testLine);
+        
+        if (w > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+        } else {
+            currentLine = testLine;
+        }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+}
+
+//Preloads Map
 function preload() {
-    // attempt to load the SVG map (place map.svg in project root)
-    // use callbacks so failure won't throw and we can log a helpful message
     loadImage('Map.svg',
         img => { bgImg = img; },
-        err => { console.warn('Map.svg failed to load — check path and casing or hosting.'); }
+        err => { console.warn('Map.svg failed to load'); }
     );
 }
 
 function setup() {
     let canvas = createCanvas(windowWidth, windowHeight);
     canvas.parent('canvas-container');
-
-    dividerX = width / 2;
-
-    // Create hover shapes on left side
-    createHoverShapes();
-
-    // Create click element on right side
-    createClickElement();
-
-
-}
-
-function createHoverShapes() {
-    hoverShapes = [];
-
-    // If SVG_ANCHORS is provided, map those SVG coordinates to canvas positions.
-    if (Array.isArray(SVG_ANCHORS) && SVG_ANCHORS.length > 0) {
-        for (let i = 0; i < SVG_ANCHORS.length; i++) {
-            const a = SVG_ANCHORS[i];
-            const s = svgToScreen(a.x, a.y);
-            const sizeScaled = (a.size || 60) * s.scale; // scale size from SVG units to pixels
-            hoverShapes.push({
-                x: s.x,
-                y: s.y,
-                size: sizeScaled,
-                baseColor: color(60, 60, 70, 30),
-                hoverColor: color(255, 90),
-                currentColor: color(60, 60, 70),
-                isHovered: false,
-                isWaving: false,
-                isFadingOut: false,
-                index: i,
-                number: i + 1,
-                shape: 0
-            });
-        }
-        return;
+    textFont('Inter');
+    noSmooth();
+    
+    // Initialize waypoint opacities
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
+        waypointOpacities[i] = 0;
     }
-
-    // Fallback: place shapes using normalized positions in left area (legacy behavior)
-    const leftWidth = max(100, dividerX - 100); // space available on left
-    const leftXOffset = 50; // left margin
-    const topOffset = 80; // top margin
-    const availHeight = max(100, height - 160);
-
-    const positions = [ 
-        { nx: 0.85, ny: 0.14, size: 60, shape: 0 },
-        { nx: 0.32, ny: 0.35, size: 60, shape: 0 },
-        { nx: 0.55, ny: 0.25, size: 58, shape: 0 },
-        { nx: 0.18, ny: 0.65, size: 64, shape: 0 },
-        { nx: 0.42, ny: 0.55, size: 80, shape: 0 },
-        { nx: 0.68, ny: 0.45, size: 66, shape: 0 }
-    ];
-
-    for (let i = 0; i < positions.length; i++) {
-        let p = positions[i];
-        hoverShapes.push({
-            x: leftXOffset + p.nx * leftWidth,
-            y: topOffset + p.ny * availHeight,
-            size: p.size || 60,
-            baseColor: color(60, 60, 70, 30),
-            hoverColor: color(255, 90),
-            currentColor: color(60, 60, 70),
-            isHovered: false,
-            isWaving: false,
-            isFadingOut: false,
-            index: i,
-            number: i + 1,
-            shape: (typeof p.shape === 'number') ? p.shape : floor(random(3))
-        });
-    }
-}
-
-function createClickElement() {
-    const rightAreaWidth = width - dividerX;
-    const rightAreaHeight = height;
-    clickElement = {
-        x: dividerX + rightAreaWidth * CLICK_ELEMENT_CONFIG.xOffset,
-        y: rightAreaHeight * CLICK_ELEMENT_CONFIG.yOffset,
-        size: 100,
-        baseColor: color(160, 121, 74),
-        hoverColor: color(187, 152, 107),
-        currentColor: color(0), // ????
-        isHovered: false,
-        pulsePhase: 0
-    };
+    waypointOpacities[0] = 1; // First waypoint starts unlocked
 }
 
 function draw() {
-    // Calculate ease-in opacity for all elements
-    let easeInOpacity = 1;
-    if (easeInStartTime !== null) {
-        let timeSinceEaseStart = millis() - easeInStartTime;
-        let easeDuration = 800; // ms for ease-in
-        if (timeSinceEaseStart < easeDuration) {
-            // Smooth ease-in (quadratic)
-            easeInOpacity = (timeSinceEaseStart / easeDuration) ** 2;
-        } else {
-            // Ease-in complete
-            easeInStartTime = null;
-            easeInOpacity = 1;
+    // Background
+    background(186, 180, 140);
+    
+    // Draw map if loaded
+    if (bgImg) {
+        push();
+        const s = svgToScreen(0, 0);
+        tint(255, 220);
+        image(bgImg, s.offsetX, s.offsetY, SVG_W * s.scale, SVG_H * s.scale);
+        pop();
+    }
+    
+    // Update hover state
+    updateHoveredWaypoint();
+    
+    // Draw path and waypoints
+    drawJourneyPath();
+    drawWaypoints();
+    
+    // Draw exam icon
+    drawExamIcon();
+    
+    // Draw info box when hovering
+    if (hoveredWaypoint >= 0) {
+        drawCurrentInfoBox();
+    }
+    
+    // Draw exam modal if open
+    drawExamModal();
+    
+    updateCursorPositionDisplay();
+}
+
+// Hover detection
+function updateHoveredWaypoint() {
+    let closestDist = Infinity;
+    let closestIndex = -1;
+    
+    // Check distance to path segments (only if next waypoint is unlocked)
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length - 1; i++) {
+        if (i > maxUnlockedWaypoint) continue; // Skip locked paths
+        
+        let p1 = svgToScreen(JOURNEY_WAYPOINTS[i].x, JOURNEY_WAYPOINTS[i].y);
+        let p2 = svgToScreen(JOURNEY_WAYPOINTS[i + 1].x, JOURNEY_WAYPOINTS[i + 1].y);
+        
+        let d = distanceToLineSegment(mouseX, mouseY, p1.x, p1.y, p2.x, p2.y);
+        
+        if (d < 35 && d < closestDist) {
+            closestDist = d;
+            closestIndex = i;
         }
     }
     
-    // If map is toggled on and loaded, draw it as background (preserve aspect ratio)
-    if (showMap && bgImg) {
-        push();
-        tint(255, 255 * easeInOpacity); // Apply opacity to map
-        // compute aspect-fit dimensions based on SVG intrinsic size
-        const scaleX = width / SVG_W;
-        const scaleY = height / SVG_H;
-        const scale = Math.min(scaleX, scaleY);
-        const drawW = SVG_W * scale;
-        const drawH = SVG_H * scale;
-        const offsetX = (width - drawW) / 2;
-        const offsetY = (height - drawH) / 2;
-        image(bgImg, offsetX, offsetY, drawW, drawH);
-        pop();
-    } else {
-        background(171, 171, 135); // BACKGROUND COLOR pre map load
-    }
-
-    // Update and draw hover shapes (only if click interaction happened)
-    if (showHoverShapes) {
-        drawHoverShapes();
-    }
-
-    // Update and draw click element (only if not clicked yet)
-    if (!clickElementClicked) {
-        drawClickElement();
-    }
-
-
-
-}
-
-function drawHoverShapes() {
-    // Check which shape is currently hovered
-    let currentlyHoveredIndex = null;
-    for (let i = 0; i < hoverShapes.length; i++) {
-        let d = dist(mouseX, mouseY, hoverShapes[i].x, hoverShapes[i].y);
-        if (d < hoverShapes[i].size / 2) {
-            currentlyHoveredIndex = i;
+    // Check distance to waypoints themselves (higher priority)
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
+        if (i > maxUnlockedWaypoint + 1) continue; // Can only hover on unlocked waypoints and the next one
+        
+        let pos = svgToScreen(JOURNEY_WAYPOINTS[i].x, JOURNEY_WAYPOINTS[i].y);
+        let d = dist(mouseX, mouseY, pos.x, pos.y);
+        
+        if (d < 45) {
+            closestIndex = i;
+            closestDist = 0;
             break;
         }
     }
-
-    // Start or reset wave based on hover
-    if (currentlyHoveredIndex !== null) {
-        // If hovering a shape, start/maintain wave from that shape
-        if (waveStartTime === null || waveSourceIndex !== currentlyHoveredIndex) {
-            waveStartTime = millis();
-            waveSourceIndex = currentlyHoveredIndex;
-            fadeOutStartTime = null; // reset fade out when new hover starts
+    
+    // Only set hoveredWaypoint to unlocked/next waypoints
+    if (closestIndex < 0 || closestIndex > maxUnlockedWaypoint + 1) {
+        // Check if mouse is over the info box to keep it visible
+        if (lastInfoBoxBounds && 
+            mouseX > lastInfoBoxBounds.x && mouseX < lastInfoBoxBounds.x + lastInfoBoxBounds.w &&
+            mouseY > lastInfoBoxBounds.y && mouseY < lastInfoBoxBounds.y + lastInfoBoxBounds.h) {
+            // Keep the current hovered waypoint
+        } else {
+            hoveredWaypoint = -1;
         }
     } else {
-        // Not hovering any shape
-        if (waveStartTime !== null) {
-            // Start fade out sequence
-            fadeOutStartTime = millis();
-            waveStartTime = null;
+        hoveredWaypoint = closestIndex;
+    }
+    
+    // Unlock next waypoint when hovering on current one
+    if (hoveredWaypoint >= 0 && hoveredWaypoint <= maxUnlockedWaypoint) {
+        if (hoveredWaypoint === maxUnlockedWaypoint && maxUnlockedWaypoint < JOURNEY_WAYPOINTS.length - 1) {
+            maxUnlockedWaypoint = hoveredWaypoint + 1;
+        }
+        
+        // Unlock exam icon when viewing waypoint 6 (Calicut, India)
+        if (hoveredWaypoint === 6) {
+            examUnlocked = true;
         }
     }
-
-    for (let shape of hoverShapes) {
-        // Check direct mouse hover
-        let d = dist(mouseX, mouseY, shape.x, shape.y);
-        shape.isHovered = d < shape.size / 2;
-
-        // Check if shape should be waving (wave effect cascades from hovered shape onward)
-        shape.isWaving = false;
-        shape.isFadingOut = false;
+    
+    // Update waypoint opacities with easing
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
+        let targetOpacity = 0.2; // Default locked
+        if (i <= maxUnlockedWaypoint) {
+            targetOpacity = 1; // Unlocked
+        } else if (i === maxUnlockedWaypoint + 1) {
+            targetOpacity = 0.5; // Next waypoint
+        }
         
-        if (waveSourceIndex !== null) {
-            // Calculate delay from the source shape
-            let distanceFromSource = shape.index - waveSourceIndex;
-            
-            if (distanceFromSource >= 0) {
-                let timeSinceWaveStart = millis() - waveStartTime;
-                let delayPerShape = 150; // ms delay between each shape in the wave
-                let shapeStartTime = distanceFromSource * delayPerShape;
+        // Smooth easing toward target opacity
+        waypointOpacities[i] = lerp(waypointOpacities[i], targetOpacity, 0.08);
+    }
+    
+    // Smooth alpha transition
+    if (hoveredWaypoint >= 0) {
+        infoBoxAlpha = min(1, infoBoxAlpha + 0.12);
+        pathSegmentAlpha = min(1, pathSegmentAlpha + 0.12);
+    } else {
+        infoBoxAlpha = max(0, infoBoxAlpha - 0.08);
+        pathSegmentAlpha = max(0, pathSegmentAlpha - 0.08);
+    }
+}
 
-                // Keep shape lit as long as source is hovered
-                if (timeSinceWaveStart >= shapeStartTime) {
-                    shape.isWaving = true;
+// PATH DRAWS
+function drawJourneyPath() {
+    // Ease the path drawing progress
+    let targetProgress = maxUnlockedWaypoint;
+    pathDrawProgress = lerp(pathDrawProgress, targetProgress, 0.06);
+    
+    // Draw only the animated drawing line (no static path)
+    stroke(160, 100, 60, 180);
+    strokeWeight(5);
+    noFill();
+    
+    beginShape();
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
+        let wp = JOURNEY_WAYPOINTS[i];
+        let pos = svgToScreen(wp.x, wp.y);
+        
+        if (i < floor(pathDrawProgress)) {
+            // Fully drawn segments
+            vertex(pos.x, pos.y);
+        } else if (i === floor(pathDrawProgress)) {
+            // Current segment being drawn - interpolate to next point
+            vertex(pos.x, pos.y);
+            
+            if (i < JOURNEY_WAYPOINTS.length - 1) {
+                let nextWp = JOURNEY_WAYPOINTS[i + 1];
+                let nextPos = svgToScreen(nextWp.x, nextWp.y);
+                
+                // Draw from current point toward next point based on progress
+                let t = pathDrawProgress - floor(pathDrawProgress); // 0 to 1
+                let interpX = lerp(pos.x, nextPos.x, t);
+                let interpY = lerp(pos.y, nextPos.y, t);
+                vertex(interpX, interpY);
+            }
+            break; // Don't draw future segments
+        }
+    }
+    endShape();
+    
+    // Highlight hovered segment with easing
+    if (hoveredWaypoint >= 0 && hoveredWaypoint < JOURNEY_WAYPOINTS.length - 1) {
+        let p1 = svgToScreen(JOURNEY_WAYPOINTS[hoveredWaypoint].x, JOURNEY_WAYPOINTS[hoveredWaypoint].y);
+        let p2 = svgToScreen(JOURNEY_WAYPOINTS[hoveredWaypoint + 1].x, JOURNEY_WAYPOINTS[hoveredWaypoint + 1].y);
+        
+        stroke(200, 120, 60, 220 * pathSegmentAlpha);
+        strokeWeight(8);
+        line(p1.x, p1.y, p2.x, p2.y);
+    }
+}
+
+function drawWaypoints() {
+    for (let i = 0; i < JOURNEY_WAYPOINTS.length; i++) {
+        let wp = JOURNEY_WAYPOINTS[i];
+        let pos = svgToScreen(wp.x, wp.y);
+        
+        let isHovered = (hoveredWaypoint === i);
+        let currentOpacity = waypointOpacities[i];
+        
+        // Glow effect (only for unlocked and hovered)
+        if (isHovered && currentOpacity > 0.7) {
+            noStroke();
+            fill(180, 110, 50, 50 * infoBoxAlpha);
+            ellipse(pos.x, pos.y, 110);
+        }
+        
+        // Waypoint circle - smoothly transition based on eased opacity
+        let col = isHovered && currentOpacity > 0.7 ? color(180, 110, 50) : color(140, 90, 40);
+        
+        fill(col);
+        stroke(100, 60, 30, 120 * currentOpacity);
+        strokeWeight(2);
+        
+        push();
+        let r = red(col);
+        let g = green(col);
+        let b = blue(col);
+        fill(r, g, b, 255 * currentOpacity);
+        ellipse(pos.x, pos.y, 55);
+        pop();
+        
+        // Number - fades based on unlock progress
+        if (currentOpacity > 0.1) {
+            fill(245, 235, 220, 255 * currentOpacity);
+            textAlign(CENTER, CENTER);
+            textSize(18);
+            textStyle(BOLD);
+            text(i + 1, pos.x, pos.y);
+        }
+    }
+}
+
+function drawExamIcon() {
+    let iconX = width - 50;
+    let iconY = 30;
+    let iconSize = 40;
+    
+    push();
+    
+    // Background circle
+    if (examUnlocked) {
+        fill(150, 110, 70, 200);
+        stroke(100, 70, 40, 200);
+    } else {
+        fill(180, 170, 160, 120);
+        stroke(120, 110, 100, 120);
+    }
+    strokeWeight(2);
+    ellipse(iconX, iconY, iconSize, iconSize);
+    
+    // Lock/Clipboard icon
+    fill(240, 235, 225, examUnlocked ? 255 : 150);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    textStyle(BOLD);
+    
+    if (examUnlocked) {
+        text("!", iconX, iconY); // Test unlocked
+    } else {
+        text("?", iconX, iconY); // TEst Locked
+    }
+    
+    pop();
+}
+
+// TEXT BOXES
+function drawCurrentInfoBox() {
+    if (hoveredWaypoint < 0 || hoveredWaypoint > maxUnlockedWaypoint) return;
+    
+    let wpIndex = hoveredWaypoint;
+    if (wpIndex >= JOURNEY_WAYPOINTS.length) wpIndex = JOURNEY_WAYPOINTS.length - 1;
+    
+    let wp = JOURNEY_WAYPOINTS[wpIndex];
+    
+    push();
+    
+    // Position box to the right of cursor
+    let boxW = min(600, width - 100);
+    let boxH = 280;
+    let boxX, boxY;
+    
+    // Place box to the right of cursor with some padding
+    boxX = mouseX + 25;
+    boxY = mouseY - boxH / 2; // Center vertically on cursor
+    
+    // Keep box within bounds
+    if (boxX + boxW > width - 20) {
+        boxX = width - boxW - 20; // Move left if it goes off-screen
+    }
+    if (boxY < 20) {
+        boxY = 20;
+    }
+    if (boxY + boxH > height - 20) {
+        boxY = height - boxH - 20;
+    }
+    
+    // Background OF TEXT BOX
+    fill(240, 235, 225, 240 * infoBoxAlpha);
+    stroke(150, 110, 70, 150 * infoBoxAlpha);
+    strokeWeight(2);
+    rect(boxX, boxY, boxW, boxH, 12);
+    
+    // Decorative line
+    noStroke();
+    line(boxX + 20, boxY + 65, boxX + boxW - 20, boxY + 65);
+    
+    // Title
+    fill(60, 40, 20, 240 * infoBoxAlpha);
+    textSize(28);
+    textStyle(BOLD);
+    textAlign(LEFT);
+    text(wp.title, boxX + 30, boxY + 50);
+    
+    // Location
+    fill(100, 70, 40, 200 * infoBoxAlpha);
+    textSize(13);
+    textStyle(NORMAL);
+    text("▪ " + wp.name, boxX + 30, boxY + 85);
+    
+    // Content
+    fill(80, 60, 40, 200 * infoBoxAlpha);
+    textSize(14);
+    textAlign(LEFT);
+    let contentY = boxY + 120;
+    let contentW = boxW - 60;
+    
+    let lines = wrapText(wp.content, contentW, 14);
+    for (let line of lines) {
+        text(line, boxX + 30, contentY);
+        contentY += 24;
+    }
+    
+    // Details
+    fill(100, 80, 60, 160 * infoBoxAlpha);
+    textSize(12);
+    contentY += 8;
+    let detailLines = wrapText(wp.details, contentW, 12);
+    for (let line of detailLines) {
+        text(line, boxX + 30, contentY);
+        contentY += 20;
+    }
+    
+    // Store box bounds so we can keep it visible when hovering over it
+    lastInfoBoxBounds = {
+        x: boxX,
+        y: boxY,
+        w: boxW,
+        h: boxH
+    };
+    
+    pop();
+
+    pop();
+}
+
+function drawExamModal() {
+    if (!examModalOpen) return;
+    
+    push();
+    
+    // Semi-transparent overlay
+    fill(0, 0, 0, 180);
+    rect(0, 0, width, height);
+    
+    // Modal background
+    let modalW = width * 0.85;
+    let modalH = height * 0.85;
+    let modalX = (width - modalW) / 2;
+    let modalY = (height - modalH) / 2;
+    
+    fill(240, 235, 225, 255);
+    stroke(150, 110, 70, 200);
+    strokeWeight(3);
+    rect(modalX, modalY, modalW, modalH, 16);
+    
+    // Close button (X in top right)
+    let closeX = modalX + modalW - 40;
+    let closeY = modalY + 30;
+    
+    fill(150, 110, 70, 200);
+    textSize(32);
+    textStyle(BOLD);
+    textAlign(CENTER, CENTER);
+    text("✕", closeX, closeY);
+    
+    // Title
+    fill(60, 40, 20, 255);
+    textSize(44);
+    textStyle(BOLD);
+    textAlign(LEFT);
+    text("Journey Knowledge Exam", modalX + 50, modalY + 60);
+    
+    // Decorative line
+    stroke(180, 140, 100, 150);
+    strokeWeight(2);
+    line(modalX + 40, modalY + 85, modalX + modalW - 40, modalY + 85);
+    
+    // Questions
+    let questions = [
+        {
+            q: "1. In what year did Vasco da Gama depart from Lisbon?",
+            options: ["1497", "1498", "1492", "1500"],
+            correct: 0
+        },
+        {
+            q: "2. How many ships sailed in da Gama's fleet?",
+            options: ["2", "4", "6", "8"],
+            correct: 1
+        },
+        {
+            q: "3. In what month did he arrive in India?",
+            options: ["March", "April", "May", "June"],
+            correct: 2
+        }
+    ];
+    
+    let qY = modalY + 130;
+    let optionSpacing = 50;
+    let btnH = 35;
+    
+    for (let i = 0; i < questions.length; i++) {
+        let q = questions[i];
+        
+        // Question text
+        fill(60, 40, 20, 255);
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(LEFT);
+        text(q.q, modalX + 50, qY);
+        qY += 35;
+        
+        // Option buttons
+        for (let j = 0; j < q.options.length; j++) {
+            let optX = modalX + 80;
+            let optY = qY + j * optionSpacing;
+            let optW = 280;
+            
+            // Determine button color
+            let isSelected = examAnswers[i] === j;
+            let isCorrect = j === q.correct;
+            
+            if (examSubmitted) {
+                if (isCorrect) {
+                    fill(100, 180, 100, 220); // Green for correct
+                } else if (isSelected && !isCorrect) {
+                    fill(200, 100, 100, 220); // Red for wrong
+                } else {
+                    fill(200, 190, 170, 150); // Grey for unselected
+                }
+            } else {
+                if (isSelected) {
+                    fill(150, 110, 70, 220); // Brown when selected
+                } else {
+                    fill(200, 190, 170, 150); // Light grey
                 }
             }
-        } else if (fadeOutStartTime !== null) {
-            // Fade out is happening
-            let timeSinceFadeStart = millis() - fadeOutStartTime;
-            let fadeDuration = 500; // ms for all shapes to fade out
             
-            if (timeSinceFadeStart < fadeDuration) {
-                shape.isFadingOut = true;
-            } else {
-                // Fade out complete, reset
-                fadeOutStartTime = null;
-            }
-        }
-
-        // Smooth color transition (prioritize wave/hover, then fading out)
-        let targetColor;
-        if (shape.isWaving || shape.isHovered) {
-            targetColor = shape.hoverColor;
-        } else if (shape.isFadingOut) {
-            // Fade toward base color
-            targetColor = shape.baseColor;
-        } else {
-            targetColor = shape.baseColor;
-        }
-        shape.currentColor = lerpColor(shape.currentColor, targetColor, 0.15);
-
-        // Draw shape
-        fill(shape.currentColor);
-        noStroke();
-        
-        // Apply ease-in opacity from global timing
-        let opacityMultiplier = 1;
-        if (easeInStartTime !== null) {
-            let timeSinceEaseStart = millis() - easeInStartTime;
-            let easeDuration = 800; // ms for ease-in
-            if (timeSinceEaseStart < easeDuration) {
-                // Smooth ease-in (quadratic)
-                opacityMultiplier = (timeSinceEaseStart / easeDuration) ** 2;
-            } else {
-                // Ease-in complete
-                opacityMultiplier = 1;
-            }
+            stroke(100, 70, 40, 200);
+            strokeWeight(2);
+            rect(optX, optY, optW, btnH, 6);
+            
+            // Option text
+            fill(60, 40, 20, 255);
+            textSize(14);
+            textStyle(NORMAL);
+            textAlign(LEFT, CENTER);
+            text("  ○ " + q.options[j], optX + 10, optY + btnH / 2);
         }
         
-        // Apply opacity to color
-        let r = red(shape.currentColor);
-        let g = green(shape.currentColor);
-        let b = blue(shape.currentColor);
-        let a = alpha(shape.currentColor) * opacityMultiplier;
-        fill(r, g, b, a);
-
-        push();
-        translate(shape.x, shape.y);
-
-        // Scale up slightly when hovered or waving
-        let s = (shape.isHovered || shape.isWaving) ? 1.2 : 1;
-        scale(s);
-
-        if (shape.shape === 0) {
-            ellipse(0, 0, shape.size);
-        } else if (shape.shape === 1) {
-            rectMode(CENTER);
-            rect(0, 0, shape.size * 0.8, shape.size * 0.8, 8);
-        } else {
-            let r = shape.size / 2;
-            triangle(0, -r, -r * 0.866, r * 0.5, r * 0.866, r * 0.5);
-        }
-        
-        // Draw number on the shape
-        fill(255);
-        textAlign(CENTER, CENTER);
-        textSize(20);
-        textFont('Arial');
-        textStyle(BOLD);
-        text(shape.number, 0, 0);
-        
-        pop();
+        qY += optionSpacing * 4 + 20;
     }
-}
-
-function drawClickElement() {
-    // Check hover state
-    let d = dist(mouseX, mouseY, clickElement.x, clickElement.y);
-    clickElement.isHovered = d < clickElement.size / 2;
-
-    // Smooth color transition NOTED COME BACK TO THIS
-    let targetColor = clickElement.isHovered ? clickElement.hoverColor : clickElement.baseColor;
-    clickElement.currentColor = lerpColor(clickElement.currentColor, targetColor, 0.1);
-
-    // Pulse animation
-    clickElement.pulsePhase += 0.05;
-    let pulse = sin(clickElement.pulsePhase) * 5;
-
-    // Draw main element
-    fill(clickElement.currentColor);
-    noStroke();
-    ellipse(clickElement.x, clickElement.y, clickElement.size + pulse);
-
-    // Draw "Click me" text
-    fill(200);
-    textAlign(CENTER, CENTER);
-    textSize(12);
-    text('Explore', clickElement.x, clickElement.y);
-}
-
-
-
-function drawSmiley() { // I dont know why i cant remove this
-    pop(); // or this
-}
-
-function mousePressed() {
-    // Check if click element was clicked
-    if (!clickElementClicked) {
-        let d = dist(mouseX, mouseY, clickElement.x, clickElement.y);
-        if (d < clickElement.size / 2) {
-            // Toggle map display 
-            showMap = !showMap;
-            // Reveal hover shapes on click
-            showHoverShapes = true;
-            // Start ease-in animation
-            easeInStartTime = millis();
-            // Hide click element after interaction
-            clickElementClicked = true;
-            // Fade out the TopText element to match other elements
-            const topText = document.querySelector('.TopText');
-            if (topText) topText.classList.add('fade-out');
+    
+    // Submit/Results button
+    let submitY = modalY + modalH - 90;
+    if (!examSubmitted) {
+        // Submit button
+        fill(150, 110, 70, 220);
+        stroke(100, 70, 40, 200);
+        strokeWeight(2);
+        rect(modalX + modalW/2 - 100, submitY, 200, 45, 8);
+        
+        fill(240, 235, 225, 255);
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+        text("Submit Exam", modalX + modalW/2, submitY + 22);
+    } else {
+        // Show score
+        let correct = 0;
+        for (let i = 0; i < questions.length; i++) {
+            if (examAnswers[i] === questions[i].correct) correct++;
         }
+        let score = Math.round((correct / questions.length) * 100);
+        
+        fill(60, 40, 20, 255);
+        textSize(28);
+        textStyle(BOLD);
+        textAlign(CENTER);
+        if (score === 100) {
+            text("Perfect Score! 🎉", modalX + modalW/2, submitY);
+        } else if (score >= 67) {
+            text("Great job! " + score + "%", modalX + modalW/2, submitY);
+        } else {
+            text("Score: " + score + "% - Try again!", modalX + modalW/2, submitY);
+        }
+        
+        textSize(14);
+        textStyle(ITALIC);
+        textAlign(CENTER);
+        fill(100, 80, 60, 200);
+        text("Click ✕ to close", modalX + modalW/2, submitY + 45);
+    }
+    
+    pop();
+}
+
+
+function wrapText(text, maxWidth, fontSize) {
+    let words = text.split(' ');
+    let lines = [];
+    let currentLine = '';
+    
+    textSize(fontSize);
+    
+    for (let word of words) {
+        let testLine = currentLine + (currentLine ? ' ' : '') + word;
+        let w = textWidth(testLine);
+        
+        if (w > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+        } else {
+            currentLine = testLine;
+        }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+}
+
+// Input handling
+function updateCursorPositionDisplay() {
+    const coordsElement = document.getElementById('cursor-coords');
+    if (coordsElement) {
+        const svgCoords = screenToSvg(mouseX, mouseY);
+        coordsElement.textContent = `${Math.round(svgCoords.x)}, ${Math.round(svgCoords.y)}`;
     }
 }
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
-    dividerX = width / 2;
-    createHoverShapes();
-    createClickElement();
-
-
-}
-// Staggered reveal animation on page load
-function revealCircles() {
-    circles.forEach((circle, index) => {
-        const col = parseInt(circle.dataset.col);
-        const row = parseInt(circle.dataset.row);
-
-        // Stagger based on column (left to right) with slight row variation
-        const delay = col * 50 + row * 15;
-
-        setTimeout(() => {
-            circle.classList.add('visible');
-        }, delay + 500); // Initial 500ms delay before animation starts
-    });
 }
 
-// Mouse interaction - reveal/hide based on horizontal position
-let mouseX = 0;
-let isInitialized = false;
-
-function updateCirclesVisibility() {
-    if (!isInitialized) return;
-
-    const windowWidth = window.innerWidth;
-    const threshold = mouseX / windowWidth; // 0 to 1
-
-    circles.forEach((circle) => {
-        const col = parseInt(circle.dataset.col);
-        const row = parseInt(circle.dataset.row);
-        const circleThreshold = col / (cols - 1);
-
-        // Staggered delay for smooth wave effect
-        const delay = Math.abs(circleThreshold - threshold) * 100 + row * 10;
-
-        circle.style.transitionDelay = `${delay}ms`;
-
-        if (circleThreshold <= threshold) {
-            circle.classList.add('visible');
-            circle.classList.remove('hidden');
-        } else {
-            circle.classList.remove('visible');
-            circle.classList.add('hidden');
+function mousePressed() {
+    // Check if clicking the exam icon
+    let iconX = width - 50;
+    let iconY = 30;
+    let iconSize = 40;
+    
+    if (examUnlocked && dist(mouseX, mouseY, iconX, iconY) < iconSize / 2 + 5) {
+        examModalOpen = true;
+        examAnswers = [null, null, null];
+        examSubmitted = false;
+        return false;
+    }
+    
+    // Handle exam modal interactions
+    if (examModalOpen) {
+        let modalW = width * 0.85;
+        let modalH = height * 0.85;
+        let modalX = (width - modalW) / 2;
+        let modalY = (height - modalH) / 2;
+        
+        // Close button
+        let closeX = modalX + modalW - 40;
+        let closeY = modalY + 30;
+        if (dist(mouseX, mouseY, closeX, closeY) < 25) {
+            examModalOpen = false;
+            examAnswers = [null, null, null];
+            examSubmitted = false;
+            return false;
         }
-    });
+        
+        // Question answers and submit button
+        if (!examSubmitted) {
+            let questions = [
+                { correct: 0 },
+                { correct: 1 },
+                { correct: 2 }
+            ];
+            
+            let qY = modalY + 130;
+            let optionSpacing = 50;
+            let btnH = 35;
+            let optW = 280;
+            
+            for (let i = 0; i < 3; i++) {
+                qY += 35;
+                for (let j = 0; j < 4; j++) {
+                    let optX = modalX + 80;
+                    let optY = qY + j * optionSpacing;
+                    
+                    if (mouseX > optX && mouseX < optX + optW &&
+                        mouseY > optY && mouseY < optY + btnH) {
+                        examAnswers[i] = j;
+                        return false;
+                    }
+                }
+                qY += optionSpacing * 4 + 20;
+            }
+            
+            // Submit button
+            let submitY = modalY + modalH - 90;
+            if (mouseX > modalX + modalW/2 - 100 && mouseX < modalX + modalW/2 + 100 &&
+                mouseY > submitY && mouseY < submitY + 45) {
+                examSubmitted = true;
+                return false;
+            }
+        }
+    }
 }
 
-// Track mouse movement
-document.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    if (isInitialized) {
-        updateCirclesVisibility();
-    }
-});
-
-// Handle mouse leaving the window
-document.addEventListener('mouseleave', () => {
-    if (isInitialized) {
-        // Keep current state when mouse leaves
-    }
-});
-
-// Initialize
-function init() {
-    initializeColors();
-    createGrid();
-
-    // Reveal animation plays first
-    revealCircles();
-
-    // After reveal completes, enable mouse interaction
-    const totalRevealTime = cols * 50 + rows * 15 + 500 + 400;
-    setTimeout(() => {
-        isInitialized = true;
-        // Set initial mouse position to right side (all visible)
-        mouseX = window.innerWidth;
-    }, totalRevealTime);
-}
-
-
-
-// Start when DOM is ready
-init();

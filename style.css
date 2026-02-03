@@ -6,39 +6,22 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #ff000000;
-    color: #ffffff;
+    background: linear-gradient(135deg, #E8DCC8 0%, #D9D0C0 50%, #E0D5C7 100%);
+    color: #3d2817;
     min-height: 100vh;
     overflow: hidden;
 }
 
-/* Background SVG sizing: scale to viewport width, height = width * aspect-ratio */
 #bg-Map {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
-    height: calc(100vw * 0.7111111111); /* 1024 / 1440 */
+    height: calc(100vw * 0.7111111111);
     object-fit: cover;
     z-index: 0;
     pointer-events: none;
-}
-
-.TopText {
-    position: fixed;
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    z-index: 1001;
-}
-
-/* Fade-out helper for TopText when interaction begins */
-.TopText.fade-out {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
-    transition: opacity 0.8s ease, transform 0.8s ease;
-    pointer-events: none;
+    opacity: 0.85;
 }
 
 .container {
@@ -61,15 +44,14 @@ body {
     display: block;
 }
 
-.instructions {
+.cursor-position {
     position: fixed;
     bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.4);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    left: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(60, 40, 20, 0.4);
     z-index: 1001;
+    user-select: none;
+    pointer-events: none;
 }

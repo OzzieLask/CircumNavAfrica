@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To India</title>
+    <title>Vasco da Gama's Journey</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
@@ -14,17 +14,12 @@
 
     <img id="bg-Map" src="Map.svg" alt="Map background">
 
-    <div class="TopText">
-        <h1>Get from Portugal to India</h1>
-        <h3></h3>
-    </div>
-
     <div class="container">
         <div id="canvas-container"></div>
     </div>
 
-    <div class="instructions">
-        Circumnavigate Africa to reach India!<br>
+    <div class="cursor-position">
+        <span id="cursor-coords">0, 0</span>
     </div>
 
     <script src="sketch.js"></script>
