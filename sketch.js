@@ -13,6 +13,7 @@ let examAnswers = [null, null, null]; // Store user answers: [q1, q2, q3]
 let examSubmitted = false; // Track if exam has been graded
 let lastInfoBoxBounds = null; // Store info box position to keep it visible when hovering over it
 let examUnlocked = false; // Track if exam icon should be unlocked (after viewing waypoint 6)
+let pulseAnimation = 0; // Track pulse animation for next waypoint
 
 // SVG Configuration
 const SVG_W = 1440;
@@ -175,6 +176,37 @@ function preload() {
     );
 }
 
+// Menu overlay logic and fade-in for experience
+let menuActive = true;
+let menuFading = false;
+let experienceFadingIn = false;
+let experienceFadeAlpha = 1;
+
+function hideMenuOverlay() {
+    const menu = document.getElementById('menu-overlay');
+    if (menu) {
+        menu.classList.add('menu-fade');
+        menuFading = true;
+        setTimeout(() => {
+            menu.style.display = 'none';
+            menuActive = false;
+            menuFading = false;
+            // Start fade-in for experience
+            experienceFadingIn = true;
+            experienceFadeAlpha = 1;
+        }, 700);
+    } else {
+        menuActive = false;
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('explore-btn');
+    if (btn) {
+        btn.addEventListener('click', hideMenuOverlay);
+    }
+});
+
 function setup() {
     let canvas = createCanvas(windowWidth, windowHeight);
     canvas.parent('canvas-container');
@@ -187,11 +219,26 @@ function setup() {
     }
     waypointOpacities[0] = 1; // First waypoint starts unlocked
 }
-
+// DRAWDRAWDRAW DRAW DRAW
 function draw() {
-    // Background
-    background(176, 170, 150);
-    
+    frameRate(60);
+    // Pause experience if menu is active or fading
+    if (menuActive || menuFading) {
+        background(232, 220, 200, 255); // match menu bg
+        return;
+    }
+    // Fade-in effect for experience
+    if (experienceFadingIn) {
+        experienceFadeAlpha -= 0.04;
+        if (experienceFadeAlpha <= 0) {
+            experienceFadeAlpha = 0;
+            experienceFadingIn = false;
+        }
+    }
+    // Update pulse animation
+    pulseAnimation += 0.08;
+    // Background (match menu)
+    background(232, 220, 200, 255);
     // Draw map if loaded
     if (bgImg) {
         push();
@@ -200,25 +247,27 @@ function draw() {
         image(bgImg, s.offsetX, s.offsetY, SVG_W * s.scale, SVG_H * s.scale);
         pop();
     }
-    
     // Update hover state
     updateHoveredWaypoint();
-    
     // Draw path and waypoints
     drawJourneyPath();
     drawWaypoints();
-    
     // Draw exam icon
     drawExamIcon();
-    
     // Draw info box when hovering
     if (hoveredWaypoint >= 0) {
         drawCurrentInfoBox();
     }
-    
     // Draw exam modal if open
     drawExamModal();
-    
+    // Fade-in overlay
+    if (experienceFadingIn && experienceFadeAlpha > 0) {
+        push();
+        noStroke();
+        fill(232, 220, 200, 255 * experienceFadeAlpha);
+        rect(0, 0, width, height);
+        pop();
+    }
     updateCursorPositionDisplay();
 }
 
@@ -362,6 +411,19 @@ function drawWaypoints() {
         
         let isHovered = (hoveredWaypoint === i);
         let currentOpacity = waypointOpacities[i];
+        let isActiveWaypoint = (i === maxUnlockedWaypoint);
+        // Calculate pulse scale for active waypoint
+        let pulseScale = 1;
+        if (isActiveWaypoint) {
+            // Create a pulsing effect: scales from 1 to 1.3 and back
+            pulseScale = 1 + 0.3 * abs(sin(pulseAnimation));
+        }
+        // Pulsing glow effect for active waypoint
+        if (isActiveWaypoint) {
+            noStroke();
+            fill(220, 150, 80, 80 * abs(sin(pulseAnimation)) * currentOpacity);
+            ellipse(pos.x, pos.y, 110 * pulseScale);
+        }
         
         // Glow effect (only for unlocked and hovered)
         if (isHovered && currentOpacity > 0.7) {
@@ -382,7 +444,7 @@ function drawWaypoints() {
         let g = green(col);
         let b = blue(col);
         fill(r, g, b, 255 * currentOpacity);
-        ellipse(pos.x, pos.y, 55);
+        ellipse(pos.x, pos.y, 55 * pulseScale);
         pop();
         
     }
@@ -551,7 +613,7 @@ function drawExamModal() {
     // Questions
     let questions = [
         {
-            q: "1. In what year did Vasco da Gama depart from Lisbon?",
+            q: "1. In what year did Vasco da Gama depart \nfrom Lisbon?",
             options: ["1497", "1498", "1492", "1500"],
             correct: 0
         },
@@ -566,79 +628,113 @@ function drawExamModal() {
             correct: 2
         }
     ];
-    
+
     let qY = modalY + 130;
     let optionSpacing = 50;
     let btnH = 35;
+    let colGap = 120;// change collunm
+    let colW = 300;
+
+    // Layout: Q1 and Q2 in left column, Q3 in right column (both at top)
+    let q1 = questions[0];
+    let q2 = questions[1];
+    let q3 = questions[2];
     
-    for (let i = 0; i < questions.length; i++) {
-        let q = questions[i];
-        
-        // Question text
-        noStroke();
-        fill(60, 40, 20, 255);
-        textSize(18);
-        textStyle(NORMAL);
-        textAlign(LEFT);
-        text(q.q, modalX + 50, qY);
-        qY += 35;
-        
-        // Option buttons
-        for (let j = 0; j < q.options.length; j++) {
-            let optX = modalX + 80;
-            let optY = qY + j * optionSpacing;
-            let optW = 280;
-            
-            // Determine button color
-            let isSelected = examAnswers[i] === j;
-            let isCorrect = j === q.correct;
-            
-            if (examSubmitted) {
-                if (isCorrect) {
-                    fill(100, 180, 100, 220); // Green for correct
-                } else if (isSelected && !isCorrect) {
-                    fill(200, 100, 100, 220); // Red for wrong
-                } else {
-                    fill(200, 190, 170, 150); // Grey for unselected
-                }
-            } else {
-                if (isSelected) {
-                    fill(150, 110, 70, 220); // Brown when selected
-                } else {
-                    fill(200, 190, 170, 150); // Light grey
-                }
-            }
-            
-            noStroke();
-            //stroke(100, 70, 40, 200);
-            //strokeWeight(2);
-            rect(optX, optY, optW, btnH, 6);
-            
-            // Option text
-            fill(60, 40, 20, 255);
-            textSize(14);
-            textStyle(NORMAL);
-            textAlign(LEFT, CENTER);
-            text("  ○ " + q.options[j], optX + 10, optY + btnH / 2);
+    let leftX = modalX + 50;
+    let rightX = leftX + colW + colGap;
+
+    // Q1 (left column, top)
+    noStroke();
+    fill(60, 40, 20, 255);
+    textSize(18);
+    textStyle(NORMAL);
+    textAlign(LEFT);
+    text(q1.q, leftX, qY);
+    let q1OptY = qY + 35;
+    for (let j = 0; j < q1.options.length; j++) {
+        let optY = q1OptY + j * optionSpacing;
+        let isSelected = examAnswers[0] === j;
+        let isCorrect = j === q1.correct;
+        if (examSubmitted) {
+            fill(isCorrect ? color(100, 180, 100, 220) : (isSelected && !isCorrect ? color(200, 100, 100, 220) : color(200, 190, 170, 150)));
+        } else {
+            fill(isSelected ? color(150, 110, 70, 220) : color(200, 190, 170, 150));
         }
-        
-        qY += optionSpacing * 4 + 20;
+        noStroke();
+        rect(leftX, optY, colW, btnH, 6);
+        fill(60, 40, 20, 255);
+        textSize(14);
+        textStyle(NORMAL);
+        textAlign(LEFT, CENTER);
+        text("  ○ " + q1.options[j], leftX + 10, optY + btnH / 2);
+    }
+
+    // Q2 (left column, below Q1)
+    let q2Y = q1OptY + optionSpacing * 4 + 25;
+    fill(60, 40, 20, 255);
+    textSize(18);
+    textStyle(NORMAL);
+    textAlign(LEFT);
+    text(q2.q, leftX, q2Y);
+    let q2OptY = q2Y + 35;
+    for (let j = 0; j < q2.options.length; j++) {
+        let optY = q2OptY + j * optionSpacing;
+        let isSelected = examAnswers[1] === j;
+        let isCorrect = j === q2.correct;
+        if (examSubmitted) {
+            fill(isCorrect ? color(100, 180, 100, 220) : (isSelected && !isCorrect ? color(200, 100, 100, 220) : color(200, 190, 170, 150)));
+        } else {
+            fill(isSelected ? color(150, 110, 70, 220) : color(200, 190, 170, 150));
+        }
+        noStroke();
+        rect(leftX, optY, colW, btnH, 6);
+        fill(60, 40, 20, 255);
+        textSize(14);
+        textStyle(NORMAL);
+        textAlign(LEFT, CENTER);
+        text("  ○ " + q2.options[j], leftX + 10, optY + btnH / 2);
+    }
+
+    // Q3 (right column, aligned with Q1 at top)
+    fill(60, 40, 20, 255);
+    textSize(18);
+    textStyle(NORMAL);
+    textAlign(LEFT);
+    text(q3.q, rightX, qY);
+    let q3OptY = qY + 35;
+    for (let j = 0; j < q3.options.length; j++) {
+        let optY = q3OptY + j * optionSpacing;
+        let isSelected = examAnswers[2] === j;
+        let isCorrect = j === q3.correct;
+        if (examSubmitted) {
+            fill(isCorrect ? color(100, 180, 100, 220) : (isSelected && !isCorrect ? color(200, 100, 100, 220) : color(200, 190, 170, 150)));
+        } else {
+            fill(isSelected ? color(150, 110, 70, 220) : color(200, 190, 170, 150));
+        }
+        noStroke();
+        rect(rightX, optY, colW, btnH, 6);
+        fill(60, 40, 20, 255);
+        textSize(14);
+        textStyle(NORMAL);
+        textAlign(LEFT, CENTER);
+        text("  ○ " + q3.options[j], rightX + 10, optY + btnH / 2);
     }
     
-    // Submit/Results button
-    let submitY = modalY + modalH - 90;
+    // Submit/Results button (centered at bottom)
+    let submitY = modalY + modalH - 80;
+    let submitX = (width / 2) - 100;
     if (!examSubmitted) {
         // Submit button
         fill(150, 110, 70, 220);
         stroke(100, 70, 40, 200);
         strokeWeight(2);
-        rect(modalX + modalW/2 - 100, submitY, 200, 45, 8);
+        rect(submitX, submitY, 200, 45, 8);
         
         fill(240, 235, 225, 255);
         textSize(18);
         textStyle(BOLD);
         textAlign(CENTER, CENTER);
-        text("Submit Exam", modalX + modalW/2, submitY + 22);
+        text("Submit Exam", submitX + 100, submitY + 22);
     } else {
         // Show score
         let correct = 0;
@@ -652,18 +748,18 @@ function drawExamModal() {
         textStyle(BOLD);
         textAlign(CENTER);
         if (score === 100) {
-            text("Perfect Score! 🎉", modalX + modalW/2, submitY);
+            text("Perfect Score!", submitX + 100, submitY);
         } else if (score >= 67) {
-            text("Great job! " + score + "%", modalX + modalW/2, submitY);
+            text("Great job! " + score + "%", submitX + 100, submitY);
         } else {
-            text("Score: " + score + "% - Try again!", modalX + modalW/2, submitY);
+            text("Score: " + score + "% - Try again!", submitX + 100, submitY);
         }
         
         textSize(14);
         textStyle(ITALIC);
         textAlign(CENTER);
         fill(100, 80, 60, 200);
-        text("Click ✕ to close", modalX + modalW/2, submitY + 45);
+        text("Click ✕ to close", submitX + 100, submitY + 45);
     }
     
     pop();
@@ -724,7 +820,7 @@ function mousePressed() {
         let modalH = height * 0.85;
         let modalX = (width - modalW) / 2;
         let modalY = (height - modalH) / 2;
-        
+
         // Close button
         let closeX = modalX + modalW - 40;
         let closeY = modalY + 30;
@@ -734,7 +830,7 @@ function mousePressed() {
             examSubmitted = false;
             return false;
         }
-        
+
         // Question answers and submit button
         if (!examSubmitted) {
             let questions = [
@@ -742,31 +838,50 @@ function mousePressed() {
                 { correct: 1 },
                 { correct: 2 }
             ];
-            
+
             let qY = modalY + 130;
             let optionSpacing = 50;
             let btnH = 35;
-            let optW = 280;
-            
-            for (let i = 0; i < 3; i++) {
-                qY += 35;
-                for (let j = 0; j < 4; j++) {
-                    let optX = modalX + 80;
-                    let optY = qY + j * optionSpacing;
-                    
-                    if (mouseX > optX && mouseX < optX + optW &&
-                        mouseY > optY && mouseY < optY + btnH) {
-                        examAnswers[i] = j;
-                        return false;
-                    }
+            let colGap = 120;
+            let colW = 300;
+            let leftX = modalX + 50;
+            let rightX = leftX + colW + colGap;
+
+            // Q1 (left col, top)
+            let q1OptY = qY + 35;
+            for (let j = 0; j < 4; j++) {
+                let optY = q1OptY + j * optionSpacing;
+                if (mouseX > leftX && mouseX < leftX + colW && mouseY > optY && mouseY < optY + btnH) {
+                    examAnswers[0] = j;
+                    return false;
                 }
-                qY += optionSpacing * 4 + 20;
             }
-            
-            // Submit button
-            let submitY = modalY + modalH - 90;
-            if (mouseX > modalX + modalW/2 - 100 && mouseX < modalX + modalW/2 + 100 &&
-                mouseY > submitY && mouseY < submitY + 45) {
+
+            // Q2 (left col, below Q1)
+            let q2Y = q1OptY + optionSpacing * 4 + 25;
+            let q2OptY = q2Y + 35;
+            for (let j = 0; j < 4; j++) {
+                let optY = q2OptY + j * optionSpacing;
+                if (mouseX > leftX && mouseX < leftX + colW && mouseY > optY && mouseY < optY + btnH) {
+                    examAnswers[1] = j;
+                    return false;
+                }
+            }
+
+            // Q3 (right col, aligned with Q1)
+            let q3OptY = qY + 35;
+            for (let j = 0; j < 4; j++) {
+                let optY = q3OptY + j * optionSpacing;
+                if (mouseX > rightX && mouseX < rightX + colW && mouseY > optY && mouseY < optY + btnH) {
+                    examAnswers[2] = j;
+                    return false;
+                }
+            }
+
+            // Submit button (centered at bottom)
+            let submitY = modalY + modalH - 80;
+            let submitX = (width / 2) - 100;
+            if (mouseX > submitX && mouseX < submitX + 200 && mouseY > submitY && mouseY < submitY + 45) {
                 examSubmitted = true;
                 return false;
             }
